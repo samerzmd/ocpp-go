@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/types"
 )
 
 // -------------------- Clear Charging Profile (CSMS -> CS) --------------------

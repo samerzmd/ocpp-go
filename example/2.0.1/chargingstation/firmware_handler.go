@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/firmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/samerzmd/ocpp-go/ocpp"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/firmware"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/types"
+	"github.com/samerzmd/ocpp-go/ocppj"
 	"io"
 	"net/http"
 	"os"

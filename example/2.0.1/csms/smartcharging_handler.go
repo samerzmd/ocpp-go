@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/smartcharging"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/samerzmd/ocpp-go/ocpp"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/smartcharging"
+	"github.com/samerzmd/ocpp-go/ocppj"
 )
 
 func (c *CSMSHandler) OnClearedChargingLimit(chargingStationID string, request *smartcharging.ClearedChargingLimitRequest) (response *smartcharging.ClearedChargingLimitResponse, err error) {

@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/logging"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/security"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/logging"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/securefirmware"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/security"
 	"github.com/sirupsen/logrus"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/core"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/firmware"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/types"
 )
 
 var (

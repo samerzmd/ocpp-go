@@ -20,7 +20,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/lorenzodonini/ocpp-go/logging"
+	"github.com/samerzmd/ocpp-go/logging"
 )
 
 const (

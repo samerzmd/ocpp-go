@@ -3,10 +3,10 @@ package ocpp2_test
 import (
 	"fmt"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/data"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/data"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/samerzmd/ocpp-go/ocpp"
+	"github.com/samerzmd/ocpp-go/ocppj"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

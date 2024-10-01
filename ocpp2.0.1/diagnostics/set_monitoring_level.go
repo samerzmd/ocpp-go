@@ -3,7 +3,7 @@ package diagnostics
 import (
 	"reflect"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/types"
 )
 
 // -------------------- Set Monitoring Level (CSMS -> CS) --------------------

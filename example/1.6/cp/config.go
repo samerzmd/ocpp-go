@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/localauth"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/remotetrigger"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/reservation"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/smartcharging"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/core"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/firmware"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/localauth"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/remotetrigger"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/reservation"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/smartcharging"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/types"
 )
 
 const (

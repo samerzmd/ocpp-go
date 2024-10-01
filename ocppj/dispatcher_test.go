@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/samerzmd/ocpp-go/ocpp"
+	"github.com/samerzmd/ocpp-go/ocppj"
 )
 
 type ServerDispatcherTestSuite struct {

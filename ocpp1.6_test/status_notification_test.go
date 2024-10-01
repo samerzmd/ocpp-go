@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/core"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/types"
 )
 
 // Test

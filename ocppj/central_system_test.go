@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
-	"github.com/lorenzodonini/ocpp-go/ws"
+	"github.com/samerzmd/ocpp-go/ocpp"
+	"github.com/samerzmd/ocpp-go/ocppj"
+	"github.com/samerzmd/ocpp-go/ws"
 )
 
 func (suite *OcppJTestSuite) TestNewServer() {

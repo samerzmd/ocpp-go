@@ -1,10 +1,10 @@
 package ocpp16_test
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/certificates"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/extendedtriggermessage"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/security"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/certificates"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/extendedtriggermessage"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/securefirmware"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/security"
 	"github.com/stretchr/testify/mock"
 )
 

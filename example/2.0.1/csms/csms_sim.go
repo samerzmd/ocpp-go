@@ -10,17 +10,17 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/availability"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/diagnostics"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/display"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/localauth"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/provisioning"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/remotecontrol"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/reservation"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
-	"github.com/lorenzodonini/ocpp-go/ws"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/availability"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/diagnostics"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/display"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/localauth"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/provisioning"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/remotecontrol"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/reservation"
+	"github.com/samerzmd/ocpp-go/ocpp2.0.1/types"
+	"github.com/samerzmd/ocpp-go/ocppj"
+	"github.com/samerzmd/ocpp-go/ws"
 )
 
 const (

@@ -1,9 +1,9 @@
 # ocpp-go
 
 [![Build Status](https://travis-ci.org/lorenzodonini/ocpp-go.svg?branch=master)](https://travis-ci.org/lorenzodonini/ocpp-go)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4)](https://godoc.org/github.com/lorenzodonini/ocpp-go)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4)](https://godoc.org/github.com/samerzmd/ocpp-go)
 [![Coverage Status](https://coveralls.io/repos/github/lorenzodonini/ocpp-go/badge.svg?branch=master)](https://coveralls.io/github/lorenzodonini/ocpp-go?branch=master)
-[![Go report](https://goreportcard.com/badge/github.com/lorenzodonini/ocpp-go)](https://goreportcard.com/report/github.com/lorenzodonini/ocpp-go)
+[![Go report](https://goreportcard.com/badge/github.com/samerzmd/ocpp-go)](https://goreportcard.com/report/github.com/samerzmd/ocpp-go)
 
 Open Charge Point Protocol implementation in Go.
 
@@ -27,7 +27,7 @@ Planned milestones and features:
 Go version 1.13+ is required.
 
 ```sh
-go get github.com/lorenzodonini/ocpp-go
+go get github.com/samerzmd/ocpp-go
 ```
 
 You will also need to fetch some dependencies:
@@ -46,8 +46,8 @@ If you want to integrate the library into your custom Central System, you must i
 
 ```go
 import (
-    "github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-    "github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+    "github.com/samerzmd/ocpp-go/ocpp1.6/core"
+    "github.com/samerzmd/ocpp-go/ocpp1.6/types"
     "time"
 )
 
@@ -181,8 +181,8 @@ If you want to integrate the library into your custom Charge Point, you must imp
 
 ```go
 import (
-    "github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-    "github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+    "github.com/samerzmd/ocpp-go/ocpp1.6/core"
+    "github.com/samerzmd/ocpp-go/ocpp1.6/types"
 )
 
 type ChargePointHandler struct {
@@ -412,7 +412,7 @@ More in-depth documentation for v2.0.1 will follow.
 To start a CSMS instance, run the following:
 
 ```go
-import "github.com/lorenzodonini/ocpp-go/ocpp2.0.1"
+import "github.com/samerzmd/ocpp-go/ocpp2.0.1"
 
 csms := ocpp2.NewCSMS(nil, nil)
 

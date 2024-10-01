@@ -8,11 +8,11 @@ import (
 	"math/rand"
 	"reflect"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
+	"github.com/samerzmd/ocpp-go/logging"
 
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
+	"github.com/samerzmd/ocpp-go/ocpp"
 )
 
 // The validator, used for validating incoming/outgoing OCPP messages.

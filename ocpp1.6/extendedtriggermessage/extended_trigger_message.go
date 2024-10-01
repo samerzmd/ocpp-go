@@ -3,7 +3,7 @@ package extendedtriggermessage
 import (
 	"reflect"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/samerzmd/ocpp-go/ocpp1.6/types"
 	"gopkg.in/go-playground/validator.v9"
 )
 
