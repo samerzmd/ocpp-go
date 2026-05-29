@@ -1123,11 +1123,13 @@ func TestClientErrors(t *testing.T) {
 	require.NotNil(t, t, err)
 	r = <-triggerC
 	assert.True(t, r)
-	// Send unexpected close message and wait for error to be thrown
-	conn := wsServer.connections[path.Base(testPath)]
-	require.NotNil(t, conn)
-	err = conn.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, ""))
-	assert.NoError(t, err)
+	// Send an unexpected close to the client. Route it through the server's own write
+	// path (StopConnection -> writePump), which is the single writer for the connection.
+	// Writing to conn.connection directly (the old approach) races the write pump — and
+	// now that the server sends keepalive pings, gorilla reliably panics on the concurrent
+	// write. Reading server.connections without the lock was also racy.
+	err = wsServer.StopConnection(path.Base(testPath), websocket.CloseError{Code: websocket.CloseUnsupportedData, Text: ""})
+	require.NoError(t, err)
 	r = <-triggerC
 	require.True(t, r)
 	// Stop server and client and wait for errors channel cleanup

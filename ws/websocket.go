@@ -907,6 +907,7 @@ type Client struct {
 	onReconnected  func()
 	mutex          sync.Mutex
 	errC           chan error
+	errMutex       sync.Mutex    // guards errC creation/use/close so error reporting is thread-safe.
 	reconnectC     chan struct{} // used for signaling, that a reconnection attempt should be interrupted
 }
 
@@ -1242,21 +1243,32 @@ func (client *Client) Stop() {
 	if client.reconnectC != nil {
 		close(client.reconnectC)
 	}
+	client.errMutex.Lock()
 	if client.errC != nil {
 		close(client.errC)
 		client.errC = nil
 	}
+	client.errMutex.Unlock()
 	// Wait for connection to actually close
 }
 
 func (client *Client) error(err error) {
 	log.Error(err)
+	// Non-blocking and thread-safe, mirroring Server.error: never block a caller on an
+	// undrained error channel, and never race a send against Stop() closing the channel.
+	client.errMutex.Lock()
+	defer client.errMutex.Unlock()
 	if client.errC != nil {
-		client.errC <- err
+		select {
+		case client.errC <- err:
+		default:
+		}
 	}
 }
 
 func (client *Client) Errors() <-chan error {
+	client.errMutex.Lock()
+	defer client.errMutex.Unlock()
 	if client.errC == nil {
 		client.errC = make(chan error, 1)
 	}
