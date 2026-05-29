@@ -128,6 +128,8 @@ type WebSocket struct {
 	closeC             chan websocket.CloseError // used to gracefully close a websocket connection.
 	forceCloseC        chan error                // used by the readPump to notify a forcefully closed connection to the writePump.
 	pingMessage        chan []byte
+	done               chan struct{} // closed exactly once when the connection is torn down; signals "no more writes".
+	closed             bool          // guarded by Server.connMutex; makes cleanupConnection idempotent. NOTE: WebSocket is copied by value on the client path, so this struct must not contain a lock type.
 	tlsConnectionState *tls.ConnectionState
 }
 
@@ -271,6 +273,7 @@ type Server struct {
 	timeoutConfig       ServerTimeoutConfig
 	upgrader            websocket.Upgrader
 	errC                chan error
+	errMutex            sync.Mutex // guards errC creation/use/close so error reporting is thread-safe.
 	connMutex           sync.RWMutex
 	addr                *net.TCPAddr
 	httpHandler         *mux.Router
@@ -355,12 +358,23 @@ func (server *Server) SetCheckOriginHandler(handler func(r *http.Request) bool) 
 
 func (server *Server) error(err error) {
 	log.Error(err)
+	// Non-blocking and thread-safe: a full or undrained error channel must never block
+	// a caller, because error() is invoked on the cleanup/write paths. Synchronizing on
+	// errMutex also prevents a send racing with Stop() closing the channel.
+	server.errMutex.Lock()
+	defer server.errMutex.Unlock()
 	if server.errC != nil {
-		server.errC <- err
+		select {
+		case server.errC <- err:
+		default:
+			// Drop the notification rather than wedge the caller during an error storm.
+		}
 	}
 }
 
 func (server *Server) Errors() <-chan error {
+	server.errMutex.Lock()
+	defer server.errMutex.Unlock()
 	if server.errC == nil {
 		server.errC = make(chan error, 1)
 	}
@@ -422,10 +436,12 @@ func (server *Server) Stop() {
 		server.error(fmt.Errorf("shutdown failed: %w", err))
 	}
 
+	server.errMutex.Lock()
 	if server.errC != nil {
 		close(server.errC)
 		server.errC = nil
 	}
+	server.errMutex.Unlock()
 }
 
 func (server *Server) StopConnection(id string, closeError websocket.CloseError) error {
@@ -437,7 +453,13 @@ func (server *Server) StopConnection(id string, closeError websocket.CloseError)
 		return fmt.Errorf("couldn't stop websocket connection. No connection with id %s is open", id)
 	}
 	log.Debugf("sending stop signal for websocket %s", ws.ID())
-	ws.closeC <- closeError
+	// Non-blocking: closeC is buffered (1) and is never closed, so this can't panic.
+	// If a close is already pending or the connection is already tearing down, do nothing.
+	select {
+	case ws.closeC <- closeError:
+	case <-ws.done:
+	default:
+	}
 	return nil
 }
 
@@ -445,20 +467,46 @@ func (server *Server) stopConnections() {
 	server.connMutex.RLock()
 	defer server.connMutex.RUnlock()
 	for _, conn := range server.connections {
-		conn.closeC <- websocket.CloseError{Code: websocket.CloseNormalClosure, Text: ""}
+		// Non-blocking send: a wedged connection must not stall server shutdown.
+		select {
+		case conn.closeC <- websocket.CloseError{Code: websocket.CloseNormalClosure, Text: ""}:
+		case <-conn.done:
+		default:
+		}
 	}
 }
 
 func (server *Server) Write(webSocketId string, data []byte) error {
+	// Look up the connection under a short read lock, then release it *before* the
+	// (potentially blocking) channel send. Holding connMutex across the send is what
+	// allowed a single stalled peer to deadlock the entire server: the blocked sender
+	// kept RLock held, cleanupConnection/wsHandler blocked on Lock, and Go's RWMutex
+	// writer-starvation rule then blocked every other reader too.
 	server.connMutex.RLock()
-	defer server.connMutex.RUnlock()
 	ws, ok := server.connections[webSocketId]
+	server.connMutex.RUnlock()
 	if !ok {
 		return fmt.Errorf("couldn't write to websocket. No socket with id %v is open", webSocketId)
 	}
 	log.Debugf("queuing data for websocket %s", webSocketId)
-	ws.outQueue <- data
-	return nil
+	// Backpressure semantics: the queue is buffered, so transient bursts are absorbed.
+	// If the peer still hasn't drained within WriteWait, treat it as dead and shed it.
+	// We never hold connMutex here, so this bounded wait cannot reintroduce the convoy.
+	// Crucially we act on the *captured* ws pointer, never a fresh lookup by ID: by the
+	// time the timeout fires the same ID may belong to a freshly reconnected connection,
+	// and we must not close that one.
+	timer := time.NewTimer(server.timeoutConfig.WriteWait)
+	defer timer.Stop()
+	select {
+	case <-ws.done:
+		return fmt.Errorf("couldn't write to websocket %v: connection is closing", webSocketId)
+	case ws.outQueue <- data:
+		return nil
+	case <-timer.C:
+		server.error(fmt.Errorf("write timed out for %s, closing unresponsive connection", webSocketId))
+		go server.cleanupConnection(ws)
+		return fmt.Errorf("couldn't write to websocket %v: send queue full", webSocketId)
+	}
 }
 
 func (server *Server) wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -521,10 +569,11 @@ out:
 	ws := WebSocket{
 		connection:         conn,
 		id:                 id,
-		outQueue:           make(chan []byte, 1),
+		outQueue:           make(chan []byte, 64),
 		closeC:             make(chan websocket.CloseError, 1),
 		forceCloseC:        make(chan error, 1),
 		pingMessage:        make(chan []byte, 1),
+		done:               make(chan struct{}),
 		tlsConnectionState: r.TLS,
 	}
 	log.Debugf("upgraded websocket connection for %s from %s", id, conn.RemoteAddr().String())
@@ -537,21 +586,29 @@ out:
 		_ = conn.Close()
 		return
 	}
-	// Check whether client exists
+	// A connection with the same ID may already be registered. After a network drop a
+	// charger reconnects with the same ID while the server can still be holding the
+	// stale (half-open) connection whose cleanup has not yet run. Rejecting the new
+	// connection (the old behavior) leaves the charger unable to recover until the
+	// server is restarted. Instead, atomically swap the new connection into the registry
+	// (capturing whatever was there) and then evict the captured connection.
+	//
+	// The swap and the registration are a single critical section, so the new connection
+	// is visible in server.connections the instant this returns — there is no window in
+	// which a freshly-handshaked client is unregistered. Capturing the displaced pointer
+	// also makes concurrent same-ID reconnects safe: each new connection cleans up exactly
+	// the connection it displaced, so an overwritten-but-live socket is never orphaned.
 	server.connMutex.Lock()
-	// There is already a connection with the same ID. Close the new one immediately with a PolicyViolation.
-	if _, exists := server.connections[id]; exists {
-		server.connMutex.Unlock()
-		server.error(fmt.Errorf("client %s already exists, closing duplicate client", id))
-		_ = conn.WriteControl(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "a connection with this ID already exists"),
-			time.Now().Add(server.timeoutConfig.WriteWait))
-		_ = conn.Close()
-		return
-	}
-	// Add new client
+	old, exists := server.connections[id]
 	server.connections[ws.id] = &ws
 	server.connMutex.Unlock()
+	if exists {
+		server.error(fmt.Errorf("client %s reconnected, evicting stale connection", id))
+		// cleanupConnection acquires connMutex itself, so it must be called unlocked.
+		// Its delete is guarded (current == ws), so evicting "old" cannot remove the
+		// new connection we just registered.
+		server.cleanupConnection(old)
+	}
 	// Read and write routines are started in separate goroutines and function will return immediately
 	go server.writePump(&ws)
 	go server.readPump(&ws)
@@ -573,9 +630,20 @@ func (server *Server) readPump(ws *WebSocket) {
 
 	conn.SetPingHandler(func(appData string) error {
 		log.Debugf("ping received from %s", ws.ID())
-		ws.pingMessage <- []byte(appData)
-		err := conn.SetReadDeadline(server.getReadTimeout())
-		return err
+		// Non-blocking: if the writePump hasn't drained the previous pong request yet,
+		// drop this one rather than stalling the readPump (a coalesced pong is fine).
+		select {
+		case ws.pingMessage <- []byte(appData):
+		default:
+		}
+		return conn.SetReadDeadline(server.getReadTimeout())
+	})
+	// Server-initiated pings (added below in writePump) are answered by the peer with a
+	// pong; receiving it extends the read deadline so a quiet-but-alive charger is not
+	// dropped, while a truly dead one still trips the deadline.
+	conn.SetPongHandler(func(string) error {
+		log.Debugf("pong received from %s", ws.ID())
+		return conn.SetReadDeadline(server.getReadTimeout())
 	})
 	_ = conn.SetReadDeadline(server.getReadTimeout())
 
@@ -606,8 +674,36 @@ func (server *Server) readPump(ws *WebSocket) {
 func (server *Server) writePump(ws *WebSocket) {
 	conn := ws.connection
 
+	// Server-side keepalive: actively probe the peer so dead/half-open connections are
+	// detected within ~PingWait instead of relying solely on the read deadline.
+	// When PingWait == 0 the read deadline is disabled (see getReadTimeout); keep the two
+	// consistent by disabling the ping ticker as well. A nil channel never fires in select.
+	var pingC <-chan time.Time
+	if server.timeoutConfig.PingWait > 0 {
+		// Guard the derived period: for a very small (but positive) PingWait,
+		// (PingWait*9)/10 can truncate to 0, and time.NewTicker(0) panics.
+		pingPeriod := (server.timeoutConfig.PingWait * 9) / 10
+		if pingPeriod <= 0 {
+			pingPeriod = server.timeoutConfig.PingWait
+		}
+		ticker := time.NewTicker(pingPeriod)
+		defer ticker.Stop()
+		pingC = ticker.C
+	}
+
 	for {
 		select {
+		case <-ws.done:
+			// Connection was cleaned up elsewhere (e.g. reconnect eviction). Exit promptly.
+			return
+		case <-pingC:
+			_ = conn.SetWriteDeadline(time.Now().Add(server.timeoutConfig.WriteWait))
+			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(server.timeoutConfig.WriteWait)); err != nil {
+				server.error(fmt.Errorf("ping failed for %s: %w", ws.ID(), err))
+				server.cleanupConnection(ws)
+				return
+			}
+			log.Debugf("ping sent to %s", ws.ID())
 		case data, ok := <-ws.outQueue:
 			_ = conn.SetWriteDeadline(time.Now().Add(server.timeoutConfig.WriteWait))
 			if !ok {
@@ -662,12 +758,31 @@ func (server *Server) writePump(ws *WebSocket) {
 // Frees internal resources after a websocket connection was signaled to be closed.
 // From this moment onwards, no new messages may be sent.
 func (server *Server) cleanupConnection(ws *WebSocket) {
-	_ = ws.connection.Close()
+	// Idempotent, and serialized via connMutex rather than a per-connection lock: the
+	// WebSocket struct is copied by value on the client path, so it must not embed a lock
+	// type (sync.Once/sync.Mutex) — that would trip `go vet`'s copylocks check. The
+	// `closed` bool is guarded by connMutex instead.
+	//
+	// We do all single-shot bookkeeping under the lock: flip `closed`, close `done`
+	// (signaling Write/StopConnection that no further sends are allowed), and delete the
+	// map entry — but only if it still points at this exact connection, so evicting a
+	// stale socket can't remove a freshly reconnected one. We intentionally do NOT close
+	// outQueue/closeC: senders no longer hold connMutex during their send, so closing
+	// those channels would risk a send-on-closed-channel panic. They are GC'd once the
+	// pumps exit.
 	server.connMutex.Lock()
-	close(ws.outQueue)
-	close(ws.closeC)
-	delete(server.connections, ws.id)
+	if ws.closed {
+		server.connMutex.Unlock()
+		return
+	}
+	ws.closed = true
+	close(ws.done)
+	if current, ok := server.connections[ws.id]; ok && current == ws {
+		delete(server.connections, ws.id)
+	}
 	server.connMutex.Unlock()
+
+	_ = ws.connection.Close()
 	log.Infof("closed connection to %s", ws.ID())
 	if server.disconnectedHandler != nil {
 		server.disconnectedHandler(ws)
